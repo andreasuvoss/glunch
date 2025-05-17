@@ -3,12 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-    "io"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
-    "strings"
 )
 
 type canteen struct {
@@ -28,56 +28,56 @@ type menu struct {
 }
 
 func GetMenu(offset int) {
-    bytes := getMenuFromSource(offset)
-    actualMenu := canteen{}
+	bytes := getMenuFromSource(offset)
+	actualMenu := canteen{}
 
-    weekDays := [5]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
+	weekDays := [5]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
 
-    err := json.Unmarshal(bytes, &actualMenu)
+	err := json.Unmarshal(bytes, &actualMenu)
 
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-    w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
-    fmt.Fprintln(w, "\033[01mDay\tDate\tDish\t\033[0m")
+	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
+	fmt.Fprintln(w, "\033[01mDay\tDate\tDish\t\033[0m")
 
-    for i := range len(actualMenu.Days) {
-        for j := range len(actualMenu.Days[i].Menu) {
-            if actualMenu.Days[i].Menu[j].Type == "Dagens vegetar ret" {
-                continue
-            }
+	for i := range len(actualMenu.Days) {
+		for j := range len(actualMenu.Days[i].Menu) {
+			if actualMenu.Days[i].Menu[j].Type == "Dagens vegetar ret" {
+				continue
+			}
 
-            theTime, err := time.Parse("2006-01-02T15:04:05", actualMenu.Days[i].Date)
+			theTime, err := time.Parse("2006-01-02T15:04:05", actualMenu.Days[i].Date)
 
-            if err != nil {
-                fmt.Println(actualMenu.Days[i].Date)
-                fmt.Println(err)
-                return
-            }
+			if err != nil {
+				fmt.Println(actualMenu.Days[i].Date)
+				fmt.Println(err)
+				return
+			}
 
-            formattedDate := theTime.Format("02.01.2006")
-            formattedNow := time.Now().Format("02.01.2006")
+			formattedDate := theTime.Format("02.01.2006")
+			formattedNow := time.Now().Format("02.01.2006")
 
-            if formattedNow == formattedDate {
-                fmt.Fprintln(w, "\033[32m"+weekDays[i]+"\t"+formattedDate+"\t"+actualMenu.Days[i].Menu[j].Dish+"\t\033[0m")
-                break
-            }
+			if formattedNow == formattedDate {
+				fmt.Fprintln(w, "\033[32m"+weekDays[i]+"\t"+formattedDate+"\t"+actualMenu.Days[i].Menu[j].Dish+"\t\033[0m")
+				break
+			}
 
-            fmt.Fprintln(w, "\033[90m"+weekDays[i]+"\t"+formattedDate+"\t"+actualMenu.Days[i].Menu[j].Dish+"\t\033[0m")
-        }
-    }
+			fmt.Fprintln(w, "\033[90m"+weekDays[i]+"\t"+formattedDate+"\t"+actualMenu.Days[i].Menu[j].Dish+"\t\033[0m")
+		}
+	}
 
-    w.Flush()
+	w.Flush()
 }
 
 func getMenuFromSource(offset int) []byte {
 
-    menuTime := time.Now().Add(time.Hour * 24 * 7 * time.Duration(offset))
-    formattedDate := menuTime.Format("Mon Jan _2 2006")
-    formattedDate = strings.ReplaceAll(formattedDate, " ", "%20")
-	url := "https://shop.foodandco.dk/api/WeeklyMenu?restaurantId=1234&languageCode=da-DK&date="+formattedDate
+	menuTime := time.Now().Add(time.Hour * 24 * 7 * time.Duration(offset))
+	formattedDate := menuTime.Format("Mon Jan _2 2006")
+	formattedDate = strings.ReplaceAll(formattedDate, " ", "%20")
+	url := "https://shop.foodandco.dk/api/WeeklyMenu?restaurantId=1234&languageCode=da-DK&date=" + formattedDate
 
 	foodClient := http.Client{
 		Timeout: time.Second * 2,
@@ -88,17 +88,17 @@ func getMenuFromSource(offset int) []byte {
 		panic(err)
 	}
 
-    res, getErr := foodClient.Do(req)
+	res, getErr := foodClient.Do(req)
 
 	if getErr != nil {
 		panic(getErr)
 	}
 
-    if res.Body != nil {
-        defer res.Body.Close()
-    }
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
 
-    body, readErr := io.ReadAll(res.Body)
+	body, readErr := io.ReadAll(res.Body)
 
 	if readErr != nil {
 		panic(readErr)

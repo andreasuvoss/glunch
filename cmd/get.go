@@ -3,23 +3,15 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
+	"io"
 	"net/http"
-    "io"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
-    "strings"
 )
 
-var Offset int
-
-func init() {
-    getCmd.Flags().IntVarP(&Offset, "offset", "o", 0, "Number of weeks to offset the menu with")
-	rootCmd.AddCommand(getCmd)
-}
-
-type cantine struct {
+type canteen struct {
 	WeekNumber int   `json:"weekNumber"`
 	Days       []day `json:"days"`
 }
@@ -35,62 +27,57 @@ type menu struct {
 	Dish string `json:"menu"`
 }
 
-var getCmd = &cobra.Command{
-	Use:   "get",
-	Short: "Gets the lunch for today",
-	Run: func(cmd *cobra.Command, args []string) {
+func GetMenu(offset int) {
+	bytes := getMenuFromSource(offset)
+	actualMenu := canteen{}
 
-		bytes := getRawMenu(time.Duration(Offset))
-		actualMenu := cantine{}
+	weekDays := [5]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
 
-		weekDays := [5]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
+	err := json.Unmarshal(bytes, &actualMenu)
 
-		err := json.Unmarshal(bytes, &actualMenu)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
+	fmt.Fprintln(w, "\033[01mDay\tDate\tDish\t\033[0m")
 
-		w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
-		fmt.Fprintln(w, "\033[01mDay\tDate\tDish\t\033[0m")
-
-		for i := range len(actualMenu.Days) {
-			for j := range len(actualMenu.Days[i].Menu) {
-				if actualMenu.Days[i].Menu[j].Type == "Dagens vegetar ret" {
-					continue
-				}
-
-				theTime, err := time.Parse("2006-01-02T15:04:05", actualMenu.Days[i].Date)
-
-				if err != nil {
-					fmt.Println(actualMenu.Days[i].Date)
-					fmt.Println(err)
-					return
-				}
-
-				formattedDate := theTime.Format("02.01.2006")
-				formattedNow := time.Now().Format("02.01.2006")
-
-				if formattedNow == formattedDate {
-					fmt.Fprintln(w, "\033[32m"+weekDays[i]+"\t"+formattedDate+"\t"+actualMenu.Days[i].Menu[j].Dish+"\t\033[0m")
-					break
-				}
-
-				fmt.Fprintln(w, "\033[90m"+weekDays[i]+"\t"+formattedDate+"\t"+actualMenu.Days[i].Menu[j].Dish+"\t\033[0m")
+	for i := range len(actualMenu.Days) {
+		for j := range len(actualMenu.Days[i].Menu) {
+			if actualMenu.Days[i].Menu[j].Type == "Dagens vegetar ret" {
+				continue
 			}
-		}
 
-		w.Flush()
-	},
+			theTime, err := time.Parse("2006-01-02T15:04:05", actualMenu.Days[i].Date)
+
+			if err != nil {
+				fmt.Println(actualMenu.Days[i].Date)
+				fmt.Println(err)
+				return
+			}
+
+			formattedDate := theTime.Format("02.01.2006")
+			formattedNow := time.Now().Format("02.01.2006")
+
+			if formattedNow == formattedDate {
+				fmt.Fprintln(w, "\033[32m"+weekDays[i]+"\t"+formattedDate+"\t"+actualMenu.Days[i].Menu[j].Dish+"\t\033[0m")
+				break
+			}
+
+			fmt.Fprintln(w, "\033[90m"+weekDays[i]+"\t"+formattedDate+"\t"+actualMenu.Days[i].Menu[j].Dish+"\t\033[0m")
+		}
+	}
+
+	w.Flush()
 }
 
-func getRawMenu(offset time.Duration) []byte {
+func getMenuFromSource(offset int) []byte {
 
-    menuTime := time.Now().Add(time.Hour * 24 * 7 * offset)
-    formattedDate := menuTime.Format("Mon Jan _2 2006")
-    formattedDate = strings.ReplaceAll(formattedDate, " ", "%20")
-	url := "https://shop.foodandco.dk/api/WeeklyMenu?restaurantId=1234&languageCode=da-DK&date="+formattedDate
+	menuTime := time.Now().Add(time.Hour * 24 * 7 * time.Duration(offset))
+	formattedDate := menuTime.Format("Mon Jan _2 2006")
+	formattedDate = strings.ReplaceAll(formattedDate, " ", "%20")
+	url := "https://shop.foodandco.dk/api/WeeklyMenu?restaurantId=1234&languageCode=da-DK&date=" + formattedDate
 
 	foodClient := http.Client{
 		Timeout: time.Second * 2,
@@ -101,17 +88,17 @@ func getRawMenu(offset time.Duration) []byte {
 		panic(err)
 	}
 
-    res, getErr := foodClient.Do(req)
+	res, getErr := foodClient.Do(req)
 
 	if getErr != nil {
 		panic(getErr)
 	}
 
-    if res.Body != nil {
-        defer res.Body.Close()
-    }
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
 
-    body, readErr := io.ReadAll(res.Body)
+	body, readErr := io.ReadAll(res.Body)
 
 	if readErr != nil {
 		panic(readErr)

@@ -14,4 +14,4 @@ Available commands:
   glunch version    Prints the version of glunch
   glunch w<int>     Gets the menu offset by the number of weeks for example 'glunch w-1'
                     or 'glunch w1' to get the menu of the previous or next week respectively
-``
+```

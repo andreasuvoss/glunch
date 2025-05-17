@@ -20,14 +20,14 @@ func main() {
 			weekOffset, err := strconv.Atoi(numberAsString)
 
 			if err != nil {
-                fmt.Printf("Could not parse %s as an integer\n", numberAsString)
-                fmt.Println("Run 'glunch help' for help with available commands and their syntax")
-                os.Exit(1)
+				fmt.Printf("Could not parse %s as an integer\n", numberAsString)
+				fmt.Println("Run 'glunch help' for help with available commands and their syntax")
+				os.Exit(1)
 			}
 
 			cmd.GetMenu(weekOffset)
-        } else if arg == "version" {
-            printVersion()
+		} else if arg == "version" {
+			printVersion()
 		} else {
 			printHelp()
 		}

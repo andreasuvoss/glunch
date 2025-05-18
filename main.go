@@ -39,6 +39,8 @@ func main() {
 
 func printHelp() {
 	fmt.Println("Welcome to glunch - a lunch menu printer written in Go")
+    fmt.Println("\nUsage:")
+    fmt.Println("  glunch [command]")
 	fmt.Println("\nAvailable commands:")
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 4, ' ', 0)
 	fmt.Fprintln(w, "  glunch\tGets the menu for the current week highlighting today")
@@ -50,5 +52,5 @@ func printHelp() {
 }
 
 func printVersion() {
-	fmt.Println("glunch v0.0.2")
+	fmt.Println("glunch v0.0.3")
 }
